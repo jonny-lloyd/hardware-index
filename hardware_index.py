@@ -94,61 +94,61 @@ ABORT_AFTER_N_CHALLENGES = 6  # stop refresh if N consecutive challenges seen
 GPUS = [
     # ---- NVIDIA RTX 50-series (2025 gen, current) ----
     {"name": "RTX 5090",       "brand": "NVIDIA", "tier": "flagship",  "msrp": 1939, "benchmark": 31000, "vram": "32GB GDDR7", "year": 2025, "search": "RTX 5090",       "exclude": ["laptop", "mobile", "bundle", "waterblock"]},
-    {"name": "RTX 5080",       "brand": "NVIDIA", "tier": "high-end",  "msrp": 1079,  "benchmark": 22000, "vram": "16GB GDDR7", "year": 2025, "search": "RTX 5080",       "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 5070 Ti",    "brand": "NVIDIA", "tier": "high-end",  "msrp": 749,  "benchmark": 18500, "vram": "16GB GDDR7", "year": 2025, "search": "RTX 5070 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 5070",       "brand": "NVIDIA", "tier": "mid-range", "msrp": 589,  "benchmark": 14500, "vram": "12GB GDDR7", "year": 2025, "search": "RTX 5070",       "exclude": ["laptop", "mobile", "bundle", "5070 Ti", "5070Ti"]},
+    {"name": "RTX 5080",       "brand": "NVIDIA", "tier": "high-end",  "msrp": 979,  "benchmark": 22000, "vram": "16GB GDDR7", "year": 2025, "search": "RTX 5080",       "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 5070 Ti",    "brand": "NVIDIA", "tier": "high-end",  "msrp": 729,  "benchmark": 18500, "vram": "16GB GDDR7", "year": 2025, "search": "RTX 5070 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 5070",       "brand": "NVIDIA", "tier": "mid-range", "msrp": 539,  "benchmark": 14500, "vram": "12GB GDDR7", "year": 2025, "search": "RTX 5070",       "exclude": ["laptop", "mobile", "bundle", "5070 Ti", "5070Ti"]},
     {"name": "RTX 5060 Ti",    "brand": "NVIDIA", "tier": "mid-range", "msrp": 399,  "benchmark": 12000, "vram": "16GB GDDR7", "year": 2025, "search": "RTX 5060 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 5060",       "brand": "NVIDIA", "tier": "budget",    "msrp": 269,  "benchmark": 10000, "vram": "8GB GDDR7",  "year": 2025, "search": "RTX 5060",       "exclude": ["laptop", "mobile", "bundle", "5060 Ti", "5060Ti"]},
+    {"name": "RTX 5060",       "brand": "NVIDIA", "tier": "budget",    "msrp": 279,  "benchmark": 10000, "vram": "8GB GDDR7",  "year": 2025, "search": "RTX 5060",       "exclude": ["laptop", "mobile", "bundle", "5060 Ti", "5060Ti"]},
 
     # ---- NVIDIA RTX 40-series (still widely sold) ----
-    {"name": "RTX 4090",       "brand": "NVIDIA", "tier": "flagship",  "msrp": 1599, "benchmark": 27000, "vram": "24GB GDDR6X","year": 2022, "search": "RTX 4090",       "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 4080 Super", "brand": "NVIDIA", "tier": "high-end",  "msrp": 999,  "benchmark": 21000, "vram": "16GB GDDR6X","year": 2024, "search": "RTX 4080 Super", "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 4070 Super", "brand": "NVIDIA", "tier": "mid-range", "msrp": 599,  "benchmark": 15500, "vram": "12GB GDDR6X","year": 2024, "search": "RTX 4070 Super", "exclude": ["laptop", "mobile", "bundle", "Ti"]},
-    {"name": "RTX 4070",       "brand": "NVIDIA", "tier": "mid-range", "msrp": 589,  "benchmark": 13500, "vram": "12GB GDDR6X","year": 2023, "search": "RTX 4070",       "exclude": ["laptop", "mobile", "bundle", "Ti", "Super"]},
-    {"name": "RTX 4060 Ti",    "brand": "NVIDIA", "tier": "mid-range", "msrp": 399,  "benchmark": 11500, "vram": "8GB GDDR6",  "year": 2023, "search": "RTX 4060 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RTX 4060",       "brand": "NVIDIA", "tier": "budget",    "msrp": 299,  "benchmark": 10650, "vram": "8GB GDDR6",  "year": 2023, "search": "RTX 4060",       "exclude": ["laptop", "mobile", "bundle", "Ti"]},
+    {"name": "RTX 4090",       "brand": "NVIDIA", "tier": "flagship",  "msrp": 1679, "benchmark": 27000, "vram": "24GB GDDR6X","year": 2022, "search": "RTX 4090",       "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 4080 Super", "brand": "NVIDIA", "tier": "high-end",  "msrp": 959,  "benchmark": 21000, "vram": "16GB GDDR6X","year": 2024, "search": "RTX 4080 Super", "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 4070 Super", "brand": "NVIDIA", "tier": "mid-range", "msrp": 579,  "benchmark": 15500, "vram": "12GB GDDR6X","year": 2024, "search": "RTX 4070 Super", "exclude": ["laptop", "mobile", "bundle", "Ti"]},
+    {"name": "RTX 4070",       "brand": "NVIDIA", "tier": "mid-range", "msrp": 499,  "benchmark": 13500, "vram": "12GB GDDR6X","year": 2023, "search": "RTX 4070",       "exclude": ["laptop", "mobile", "bundle", "Ti", "Super"]},
+    {"name": "RTX 4060 Ti",    "brand": "NVIDIA", "tier": "mid-range", "msrp": 389,  "benchmark": 11500, "vram": "8GB GDDR6",  "year": 2023, "search": "RTX 4060 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 4060",       "brand": "NVIDIA", "tier": "budget",    "msrp": 289,  "benchmark": 10650, "vram": "8GB GDDR6",  "year": 2023, "search": "RTX 4060",       "exclude": ["laptop", "mobile", "bundle", "Ti"]},
 
     # ---- NVIDIA RTX 30-series (mostly used market) ----
     {"name": "RTX 3070",       "brand": "NVIDIA", "tier": "mid-range", "msrp": 469,  "benchmark": 11000, "vram": "8GB GDDR6",  "year": 2020, "search": "RTX 3070",       "exclude": ["laptop", "mobile", "bundle", "Ti"]},
     {"name": "RTX 3060 Ti",    "brand": "NVIDIA", "tier": "mid-range", "msrp": 369,  "benchmark": 9700,  "vram": "8GB GDDR6",  "year": 2020, "search": "RTX 3060 Ti",    "exclude": ["laptop", "mobile", "bundle"]},
     {"name": "RTX 3060",       "brand": "NVIDIA", "tier": "budget",    "msrp": 299,  "benchmark": 8500,  "vram": "12GB GDDR6", "year": 2021, "search": "RTX 3060 12GB",  "exclude": ["laptop", "mobile", "bundle", "Ti"]},
-    {"name": "RTX 3050",       "brand": "NVIDIA", "tier": "budget",    "msrp": 229,  "benchmark": 6000,  "vram": "8GB GDDR6",  "year": 2022, "search": "RTX 3050",       "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RTX 3050",       "brand": "NVIDIA", "tier": "budget",    "msrp": 239,  "benchmark": 6000,  "vram": "8GB GDDR6",  "year": 2022, "search": "RTX 3050",       "exclude": ["laptop", "mobile", "bundle"]},
 
     # ---- AMD RX 9000-series (2025 gen) ----
     {"name": "RX 9070 XT",     "brand": "AMD",    "tier": "high-end",  "msrp": 569,  "benchmark": 17500, "vram": "16GB GDDR6", "year": 2025, "search": "RX 9070 XT",     "exclude": ["laptop", "mobile", "bundle"]},
     {"name": "RX 9070",        "brand": "AMD",    "tier": "mid-range", "msrp": 529,  "benchmark": 15500, "vram": "16GB GDDR6", "year": 2025, "search": "RX 9070",        "exclude": ["laptop", "mobile", "bundle", "XT"]},
 
     # ---- AMD RX 7000-series ----
-    {"name": "RX 7900 XTX",    "brand": "AMD",    "tier": "flagship",  "msrp": 999,  "benchmark": 22500, "vram": "24GB GDDR6", "year": 2022, "search": "RX 7900 XTX",    "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RX 7900 XTX",    "brand": "AMD",    "tier": "flagship",  "msrp": 1049,  "benchmark": 22500, "vram": "24GB GDDR6", "year": 2022, "search": "RX 7900 XTX",    "exclude": ["laptop", "mobile", "bundle"]},
     {"name": "RX 7800 XT",     "brand": "AMD",    "tier": "mid-range", "msrp": 479,  "benchmark": 16500, "vram": "16GB GDDR6", "year": 2023, "search": "RX 7800 XT",     "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RX 7700 XT",     "brand": "AMD",    "tier": "mid-range", "msrp": 349,  "benchmark": 13500, "vram": "12GB GDDR6", "year": 2023, "search": "RX 7700 XT",     "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RX 7600",        "brand": "AMD",    "tier": "budget",    "msrp": 259,  "benchmark": 8500,  "vram": "8GB GDDR6",  "year": 2023, "search": "RX 7600",        "exclude": ["laptop", "mobile", "bundle", "XT"]},
+    {"name": "RX 7700 XT",     "brand": "AMD",    "tier": "mid-range", "msrp": 429,  "benchmark": 13500, "vram": "12GB GDDR6", "year": 2023, "search": "RX 7700 XT",     "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "RX 7600",        "brand": "AMD",    "tier": "budget",    "msrp": 239,  "benchmark": 8500,  "vram": "8GB GDDR6",  "year": 2023, "search": "RX 7600",        "exclude": ["laptop", "mobile", "bundle", "XT"]},
 
     # ---- AMD RX 6000-series (used market) ----
     {"name": "RX 6700 XT",     "brand": "AMD",    "tier": "mid-range", "msrp": 419,  "benchmark": 11000, "vram": "12GB GDDR6", "year": 2021, "search": "RX 6700 XT",     "exclude": ["laptop", "mobile", "bundle"]},
-    {"name": "RX 6600",        "brand": "AMD",    "tier": "budget",    "msrp": 239,  "benchmark": 7500,  "vram": "8GB GDDR6",  "year": 2021, "search": "RX 6600",        "exclude": ["laptop", "mobile", "bundle", "XT"]},
+    {"name": "RX 6600",        "brand": "AMD",    "tier": "budget",    "msrp": 299,  "benchmark": 7500,  "vram": "8GB GDDR6",  "year": 2021, "search": "RX 6600",        "exclude": ["laptop", "mobile", "bundle", "XT"]},
 
     # ---- Intel Arc (growing budget presence) ----
-    {"name": "Intel Arc B580",    "brand": "Intel","tier": "budget",  "msrp": 249,  "benchmark": 10000, "vram": "12GB GDDR6", "year": 2024, "search": "Intel Arc B580",    "exclude": ["laptop", "mobile", "bundle"]},
+    {"name": "Intel Arc B580",    "brand": "Intel","tier": "budget",  "msrp": 239,  "benchmark": 10000, "vram": "12GB GDDR6", "year": 2024, "search": "Intel Arc B580",    "exclude": ["laptop", "mobile", "bundle"]},
     {"name": "Intel Arc A750",    "brand": "Intel","tier": "budget",  "msrp": 289,  "benchmark": 8500,  "vram": "8GB GDDR6",  "year": 2022, "search": "Intel Arc A750",    "exclude": ["laptop", "mobile", "bundle"]},
 ]
 
 RAM_KITS = [
     # ---- DDR4 (still relevant for AM4 + older Intel) ----
-    {"name": "Corsair Vengeance LPX 16GB (2x8) DDR4-3200", "brand": "Corsair",  "tier": "budget",    "capacity": 16, "speed": 3200, "gen": "DDR4", "msrp": 75,  "search": "Corsair Vengeance LPX 16GB 3200",    "exclude": ["32GB", "64GB", "ECC", "laptop", "sodimm"]},
-    {"name": "Corsair Vengeance LPX 32GB (2x16) DDR4-3600","brand": "Corsair",  "tier": "mid-range", "capacity": 32, "speed": 3600, "gen": "DDR4", "msrp": 160,  "search": "Corsair Vengeance LPX 32GB 3600",    "exclude": ["16GB", "64GB", "ECC", "laptop", "sodimm"]},
-    {"name": "G.Skill Ripjaws V 16GB (2x8) DDR4-3600",    "brand": "G.Skill",  "tier": "budget",    "capacity": 16, "speed": 3600, "gen": "DDR4", "msrp": 85,  "search": "G.Skill Ripjaws V 16GB 3600",        "exclude": ["32GB", "64GB", "ECC", "laptop", "sodimm"]},
-    {"name": "G.Skill Trident Z RGB 32GB (2x16) DDR4-3600","brand": "G.Skill", "tier": "mid-range", "capacity": 32, "speed": 3600, "gen": "DDR4", "msrp": 200, "search": "G.Skill Trident Z RGB 32GB 3600",    "exclude": ["16GB", "64GB", "DDR5", "laptop", "sodimm"]},
+    {"name": "Corsair Vengeance LPX 16GB (2x8) DDR4-3200", "brand": "Corsair",  "tier": "budget",    "capacity": 16, "speed": 3200, "gen": "DDR4", "msrp": 39,  "search": "Corsair Vengeance LPX 16GB 3200",    "exclude": ["32GB", "64GB", "ECC", "laptop", "sodimm"]},
+    {"name": "Corsair Vengeance LPX 32GB (2x16) DDR4-3600","brand": "Corsair",  "tier": "mid-range", "capacity": 32, "speed": 3600, "gen": "DDR4", "msrp": 89,   "search": "Corsair Vengeance LPX 32GB 3600",    "exclude": ["16GB", "64GB", "ECC", "laptop", "sodimm"]},
+    {"name": "G.Skill Ripjaws V 16GB (2x8) DDR4-3600",    "brand": "G.Skill",  "tier": "budget",    "capacity": 16, "speed": 3600, "gen": "DDR4", "msrp": 49,  "search": "G.Skill Ripjaws V 16GB 3600",        "exclude": ["32GB", "64GB", "ECC", "laptop", "sodimm"]},
+    {"name": "G.Skill Trident Z RGB 32GB (2x16) DDR4-3600","brand": "G.Skill", "tier": "mid-range", "capacity": 32, "speed": 3600, "gen": "DDR4", "msrp": 99,  "search": "G.Skill Trident Z RGB 32GB 3600",    "exclude": ["16GB", "64GB", "DDR5", "laptop", "sodimm"]},
 
     # ---- DDR5 (current mainstream) ----
-    {"name": "Kingston Fury Beast 16GB (2x8) DDR5-5200",  "brand": "Kingston", "tier": "budget",    "capacity": 16, "speed": 5200, "gen": "DDR5", "msrp": 120, "search": "Kingston Fury Beast 16GB DDR5 5200", "exclude": ["32GB", "64GB", "DDR4", "laptop", "sodimm"]},
-    {"name": "Crucial 32GB (2x16) DDR5-5600",             "brand": "Crucial",  "tier": "budget",    "capacity": 32, "speed": 5600, "gen": "DDR5", "msrp": 130, "search": "Crucial 32GB DDR5 5600",             "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm", "Pro"]},
-    {"name": "Kingston Fury Beast 32GB (2x16) DDR5-5600", "brand": "Kingston", "tier": "budget",    "capacity": 32, "speed": 5600, "gen": "DDR5", "msrp": 150, "search": "Kingston Fury Beast 32GB DDR5 5600", "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm"]},
-    {"name": "Corsair Vengeance 32GB (2x16) DDR5-6000",   "brand": "Corsair",  "tier": "mid-range", "capacity": 32, "speed": 6000, "gen": "DDR5", "msrp": 170, "search": "Corsair Vengeance 32GB DDR5 6000",   "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm"]},
-    {"name": "G.Skill Trident Z5 Neo 32GB (2x16) DDR5-6000 CL30","brand":"G.Skill","tier":"mid-range","capacity":32,"speed":6000,"gen":"DDR5","msrp":180,"search":"G.Skill Trident Z5 Neo 32GB 6000 CL30","exclude":["16GB","64GB","DDR4","laptop","sodimm"]},
-    {"name": "G.Skill Trident Z5 32GB (2x16) DDR5-6400",  "brand": "G.Skill",  "tier": "mid-range", "capacity": 32, "speed": 6400, "gen": "DDR5", "msrp": 210, "search": "G.Skill Trident Z5 32GB DDR5 6400",  "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm", "Neo"]},
-    {"name": "Corsair Vengeance 64GB (2x32) DDR5-6000",   "brand": "Corsair",  "tier": "high-end",  "capacity": 64, "speed": 6000, "gen": "DDR5", "msrp": 280, "search": "Corsair Vengeance 64GB DDR5 6000",   "exclude": ["16GB", "32GB", "DDR4", "laptop", "sodimm"]},
-    {"name": "G.Skill Trident Z5 64GB (2x32) DDR5-6400",  "brand": "G.Skill",  "tier": "high-end",  "capacity": 64, "speed": 6400, "gen": "DDR5", "msrp": 350, "search": "G.Skill Trident Z5 64GB DDR5 6400",  "exclude": ["16GB", "32GB", "DDR4", "laptop", "sodimm"]},
+    {"name": "Kingston Fury Beast 16GB (2x8) DDR5-5200",  "brand": "Kingston", "tier": "budget",    "capacity": 16, "speed": 5200, "gen": "DDR5", "msrp": 55,  "search": "Kingston Fury Beast 16GB DDR5 5200", "exclude": ["32GB", "64GB", "DDR4", "laptop", "sodimm"]},
+    {"name": "Crucial 32GB (2x16) DDR5-5600",             "brand": "Crucial",  "tier": "budget",    "capacity": 32, "speed": 5600, "gen": "DDR5", "msrp": 89,  "search": "Crucial 32GB DDR5 5600",             "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm", "Pro"]},
+    {"name": "Kingston Fury Beast 32GB (2x16) DDR5-5600", "brand": "Kingston", "tier": "budget",    "capacity": 32, "speed": 5600, "gen": "DDR5", "msrp": 99,  "search": "Kingston Fury Beast 32GB DDR5 5600", "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm"]},
+    {"name": "Corsair Vengeance 32GB (2x16) DDR5-6000",   "brand": "Corsair",  "tier": "mid-range", "capacity": 32, "speed": 6000, "gen": "DDR5", "msrp": 129, "search": "Corsair Vengeance 32GB DDR5 6000",   "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm"]},
+    {"name": "G.Skill Trident Z5 Neo 32GB (2x16) DDR5-6000 CL30","brand":"G.Skill","tier":"mid-range","capacity":32,"speed":6000,"gen":"DDR5","msrp":139,"search":"G.Skill Trident Z5 Neo 32GB 6000 CL30","exclude":["16GB","64GB","DDR4","laptop","sodimm"]},
+    {"name": "G.Skill Trident Z5 32GB (2x16) DDR5-6400",  "brand": "G.Skill",  "tier": "mid-range", "capacity": 32, "speed": 6400, "gen": "DDR5", "msrp": 159, "search": "G.Skill Trident Z5 32GB DDR5 6400",  "exclude": ["16GB", "64GB", "DDR4", "laptop", "sodimm", "Neo"]},
+    {"name": "Corsair Vengeance 64GB (2x32) DDR5-6000",   "brand": "Corsair",  "tier": "high-end",  "capacity": 64, "speed": 6000, "gen": "DDR5", "msrp": 249, "search": "Corsair Vengeance 64GB DDR5 6000",   "exclude": ["16GB", "32GB", "DDR4", "laptop", "sodimm"]},
+    {"name": "G.Skill Trident Z5 64GB (2x32) DDR5-6400",  "brand": "G.Skill",  "tier": "high-end",  "capacity": 64, "speed": 6400, "gen": "DDR5", "msrp": 299, "search": "G.Skill Trident Z5 64GB DDR5 6400",  "exclude": ["16GB", "32GB", "DDR4", "laptop", "sodimm"]},
 ]
 
 # ---------------------------------------------------------------------------
