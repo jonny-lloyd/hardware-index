@@ -410,6 +410,7 @@
   .duo-tile.ddr4 .big { color: var(--amber); }
   .panel {
     background: var(--bg-1); border: 1px solid var(--line);
+    min-width: 0; overflow: hidden;
   }
   .panel-header {
     padding: 12px 16px; border-bottom: 1px solid var(--line);
@@ -418,20 +419,42 @@
   }
   .panel-header .accent { color: var(--amber); }
   .panel-body { padding: 4px 0; }
-  .panel-body table { width: 100%; }
-  .panel-body th {
-    background: transparent; padding: 8px 16px; font-size: 9px;
-    color: var(--fg-faint); border-bottom: 1px solid var(--line);
+  .panel-body table {
+    width: 100%; min-width: 0; max-width: 100%;
+    table-layout: fixed; border-collapse: collapse;
   }
-  .panel-body td { padding: 8px 16px; font-size: 11px; border-bottom: 1px solid var(--line); }
+  .panel-body th {
+    background: transparent; padding: 8px 12px; font-size: 9px;
+    color: var(--fg-faint); border-bottom: 1px solid var(--line);
+    white-space: normal;
+  }
+  /* Override the global tbody td { white-space: nowrap } that the
+     main GPU/RAM tables need but causes the index-tab panels to
+     overflow horizontally on narrow viewports / Pages. */
+  .panel-body td {
+    padding: 8px 12px; font-size: 11px; border-bottom: 1px solid var(--line);
+    white-space: normal; word-break: break-word; overflow-wrap: anywhere;
+    vertical-align: top;
+  }
   .panel-body tr:last-child td { border-bottom: 0; }
+  /* Tier panel: 3 columns, give each ~33% so the ratio bar + label can wrap inside */
+  .panel-body table.tier-table col.col-tier { width: 28%; }
+  .panel-body table.tier-table col.col-side { width: 36%; }
+  /* Leader panel: name | metric | price */
+  .panel-body table.leader-table col.col-name  { width: 56%; }
+  .panel-body table.leader-table col.col-val   { width: 26%; }
+  .panel-body table.leader-table col.col-price { width: 18%; }
+  .panel-body .price-range {
+    display: block; white-space: normal; word-break: break-word;
+  }
   .panel-body .rank {
     display: inline-block; width: 18px; color: var(--fg-faint); text-align: right;
     margin-right: 8px;
   }
   .ratio-bar {
-    display: inline-block; width: 60px; height: 4px; background: var(--line-2);
-    margin-right: 8px; vertical-align: middle; position: relative;
+    display: block; width: 100%; max-width: 80px; height: 4px;
+    background: var(--line-2); margin: 4px 0; vertical-align: middle;
+    position: relative;
   }
   .ratio-bar .fill {
     position: absolute; top: 0; bottom: 0; background: var(--amber);
@@ -1500,10 +1523,10 @@ function renderTierPanel(label, newTiers, usedTiers) {
     const u = usedTiers?.[t];
     if (!n && !u) return '';
     const newCell = n
-      ? `<td class="num">${ratioBar(n.avg_ratio)} ${ratioToPct(n.avg_ratio)}<br><span class="price-range">£${Math.round(n.avg_price)} avg · n=${n.count}</span></td>`
+      ? `<td class="num">${ratioToPct(n.avg_ratio)}${ratioBar(n.avg_ratio)}<span class="price-range">£${Math.round(n.avg_price)} · n=${n.count}</span></td>`
       : '<td class="num"><span class="price-empty">—</span></td>';
     const usedCell = u
-      ? `<td class="num">${ratioBar(u.avg_ratio)} ${ratioToPct(u.avg_ratio)}<br><span class="price-range">£${Math.round(u.avg_price)} avg · n=${u.count}</span></td>`
+      ? `<td class="num">${ratioToPct(u.avg_ratio)}${ratioBar(u.avg_ratio)}<span class="price-range">£${Math.round(u.avg_price)} · n=${u.count}</span></td>`
       : '<td class="num"><span class="price-empty">—</span></td>';
     return `<tr>
       <td><span class="tier-badge tier-${t}">${t}</span></td>
@@ -1516,7 +1539,10 @@ function renderTierPanel(label, newTiers, usedTiers) {
     <div class="panel">
       <div class="panel-header"><span class="accent">${label}</span> · Tier index vs MSRP</div>
       <div class="panel-body">
-        <table>
+        <table class="tier-table">
+          <colgroup>
+            <col class="col-tier"><col class="col-side"><col class="col-side">
+          </colgroup>
           <thead><tr>
             <th style="text-align:left">Tier</th>
             <th class="num">New</th>
@@ -1565,13 +1591,19 @@ function renderLeaderPanel(title, usedList, newList, kind) {
     <div class="panel">
       <div class="panel-header"><span class="accent">${title}</span></div>
       <div class="panel-body">
-        <table>
+        <table class="leader-table">
+          <colgroup>
+            <col class="col-name"><col class="col-val"><col class="col-price">
+          </colgroup>
           <thead><tr>
             <th colspan="3" style="text-align:left;color:var(--green)">Used market</th>
           </tr></thead>
           <tbody>${usedRows || '<tr><td colspan=3 style="padding:16px;text-align:center;color:var(--fg-faint)">No data</td></tr>'}</tbody>
         </table>
-        <table>
+        <table class="leader-table">
+          <colgroup>
+            <col class="col-name"><col class="col-val"><col class="col-price">
+          </colgroup>
           <thead><tr>
             <th colspan="3" style="text-align:left;color:var(--amber);border-top:1px solid var(--line)">New market</th>
           </tr></thead>
