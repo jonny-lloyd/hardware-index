@@ -32,6 +32,7 @@ import random
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -63,6 +64,11 @@ SNAPSHOT_FILE = str(REPO_ROOT / "price_history.json")
 DOCS_DIR = REPO_ROOT / "docs"
 MAX_SNAPSHOTS = 200
 OWNER_LABEL = os.environ.get("HW_OWNER", "owner")
+
+# Set by prompt_mode() before app.run(). "owner" = manual UI control.
+# "server" = APScheduler triggers refresh+publish on the hour, owner buttons
+# are hidden in the served HTML so the page is monitor-only.
+MODE = "owner"
 
 # eBay region: change to "ebay.com" if you want US listings.
 # UK users should use "ebay.co.uk" to avoid geo-redirect breaking the parser.
@@ -886,16 +892,29 @@ def compute_current_stats() -> dict:
 STATIC_INJECT_MARKER = "<!-- STATIC-INJECT -->"
 
 
+def _inject_flags(html: str, *, static: bool, server: bool) -> str:
+    """Replace the inject marker with whatever runtime flags the JS should see.
+
+    - static=True  → public Pages export (read-only, no /api/* endpoints)
+    - server=True  → live Flask page in server mode (UI accessible but
+      Refresh/Publish hidden because the scheduler owns those actions)
+    """
+    parts: list[str] = []
+    if static:
+        parts.append("window.HW_STATIC = true;")
+        parts.append(f"window.HW_STATIC_OWNER = {json.dumps(OWNER_LABEL)};")
+    if server:
+        parts.append("window.HW_SERVER = true;")
+    if not parts:
+        return html.replace(STATIC_INJECT_MARKER, "")
+    flag = "<script>" + " ".join(parts) + "</script>"
+    if STATIC_INJECT_MARKER in html:
+        return html.replace(STATIC_INJECT_MARKER, flag)
+    return html.replace("<head>", "<head>\n" + flag, 1)
+
+
 def _build_static_html() -> str:
-    """Render the same template, but with a STATIC marker for the JS to flip on."""
-    flag = (
-        f'<script>window.HW_STATIC = true; '
-        f'window.HW_STATIC_OWNER = {json.dumps(OWNER_LABEL)};</script>'
-    )
-    if STATIC_INJECT_MARKER in HTML:
-        return HTML.replace(STATIC_INJECT_MARKER, flag)
-    # Fallback: stick it right after <head>
-    return HTML.replace("<head>", "<head>\n" + flag, 1)
+    return _inject_flags(HTML, static=True, server=False)
 
 
 def export_static_site(output_dir) -> Path:
@@ -968,7 +987,8 @@ def export_static_site(output_dir) -> Path:
 
 @app.route("/")
 def index():
-    return render_template_string(HTML)
+    html = _inject_flags(HTML, static=False, server=(MODE == "server"))
+    return render_template_string(html)
 
 
 @app.route("/api/data")
@@ -1006,35 +1026,34 @@ def api_aggregates():
     })
 
 
-@app.route("/api/publish", methods=["POST"])
-def api_publish():
+def publish_to_git() -> tuple[dict, int]:
     """Stage docs/ + price_history.json, commit, push.
 
-    The owner inspects data after Refresh, then triggers this when satisfied.
-    Failures (no remote, auth, conflicts) bubble back to the UI verbatim from
-    git stderr so they can be acted on without leaving the browser.
+    Returns (payload, http_status). Used by both POST /api/publish (interactive)
+    and the server-mode scheduler (autonomous), so the failure shape is the same
+    in both contexts.
     """
     git = shutil.which("git")
     if not git:
-        return jsonify({
+        return ({
             "ok": False,
             "stage": "preflight",
             "error": "git is not on PATH — install Git for Windows or add it to PATH and retry.",
-        }), 500
+        }, 500)
 
     if not DOCS_DIR.exists():
-        return jsonify({
+        return ({
             "ok": False,
             "stage": "preflight",
-            "error": "docs/ does not exist yet — click Refresh Prices once before publishing.",
-        }), 400
+            "error": "docs/ does not exist yet — run a refresh first.",
+        }, 400)
 
     if not (REPO_ROOT / ".git").exists():
-        return jsonify({
+        return ({
             "ok": False,
             "stage": "preflight",
             "error": "This directory is not a git repository. Run `git init` and configure a remote first.",
-        }), 400
+        }, 400)
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     msg = f"publish: {ts}"
@@ -1052,7 +1071,7 @@ def api_publish():
     add_args = ["add", "docs/"] + ([snap_arg] if snap_arg else [])
     add = run(*add_args)
     if add.returncode != 0:
-        return jsonify({"ok": False, "stage": "git add", "error": (add.stderr or add.stdout).strip()}), 500
+        return ({"ok": False, "stage": "git add", "error": (add.stderr or add.stdout).strip()}, 500)
 
     commit = run("commit", "-m", msg)
     nothing_to_commit = (
@@ -1060,23 +1079,35 @@ def api_publish():
         and "nothing to commit" in ((commit.stdout or "") + (commit.stderr or "")).lower()
     )
     if commit.returncode != 0 and not nothing_to_commit:
-        return jsonify({"ok": False, "stage": "git commit", "error": (commit.stderr or commit.stdout).strip()}), 500
+        return ({"ok": False, "stage": "git commit", "error": (commit.stderr or commit.stdout).strip()}, 500)
 
     push = run("push")
     if push.returncode != 0:
-        return jsonify({
+        return ({
             "ok": False,
             "stage": "git push",
             "error": (push.stderr or push.stdout).strip(),
             "commit_made": not nothing_to_commit,
-        }), 500
+        }, 500)
 
-    return jsonify({
+    return ({
         "ok": True,
         "message": msg,
         "nothing_to_commit": nothing_to_commit,
         "push_output": (push.stdout + push.stderr).strip(),
-    })
+    }, 200)
+
+
+@app.route("/api/publish", methods=["POST"])
+def api_publish():
+    """Stage docs/ + price_history.json, commit, push.
+
+    The owner inspects data after Refresh, then triggers this when satisfied.
+    Failures (no remote, auth, conflicts) bubble back to the UI verbatim from
+    git stderr so they can be acted on without leaving the browser.
+    """
+    payload, status = publish_to_git()
+    return jsonify(payload), status
 
 
 @app.route("/api/debug")
@@ -1762,11 +1793,14 @@ HTML = r"""
 </div>
 
 <script>
-// ---- Static / live mode ----
-// In static mode (GitHub Pages export) we read JSON files committed alongside
-// index.html and hide owner-only controls. window.HW_STATIC is injected by
-// export_static_site() before <head> closes.
+// ---- Static / live / server mode ----
+// STATIC: GitHub Pages export — no /api/* endpoints, no owner controls.
+// SERVER: live Flask page in server mode — endpoints exist but the autonomous
+//   scheduler owns Refresh/Publish, so the buttons are hidden in the UI.
+// READ_ONLY: either of the above hides owner-only buttons.
 const STATIC = !!window.HW_STATIC;
+const SERVER = !!window.HW_SERVER;
+const READ_ONLY = STATIC || SERVER;
 const URL_DATA       = STATIC ? './data.json'        : '/api/data';
 const URL_AGGREGATES = STATIC ? './aggregates.json'  : '/api/aggregates';
 const URL_REFRESH    = '/api/refresh';
@@ -2112,14 +2146,23 @@ document.addEventListener('click', (e) => {
 $('#refresh-btn').addEventListener('click', triggerRefresh);
 $('#publish-btn').addEventListener('click', triggerPublish);
 
-if (STATIC) {
-  // Hide owner controls — the public site is read-only.
+if (READ_ONLY) {
+  // Hide owner controls. STATIC = public Pages mirror (no API at all).
+  // SERVER = live monitoring page where the scheduler is in charge.
   ['#refresh-btn', '#publish-btn'].forEach(sel => {
     const el = $(sel);
     if (el) el.style.display = 'none';
   });
   const pill = $('#readonly-pill');
-  if (pill) pill.style.display = '';
+  if (pill) {
+    pill.style.display = '';
+    // SERVER pill phrasing is different — it's a running process, not a frozen
+    // snapshot — so flag the difference up front.
+    if (SERVER && !STATIC) {
+      const span = pill.querySelector('span:last-child');
+      if (span) span.innerHTML = 'SERVER MODE · NEXT REFRESH TOP OF HOUR · UPDATED <b id="readonly-age">—</b>';
+    }
+  }
 }
 
 // ============================================================
@@ -2889,6 +2932,100 @@ if (!STATIC) {
 
 
 # ---------------------------------------------------------------------------
+# Server mode (autonomous refresh + publish on the hour)
+# ---------------------------------------------------------------------------
+
+# Guards a running cycle so the scheduler never starts a second hourly job
+# while the previous one is still scraping or pushing.
+_cycle_lock = threading.Lock()
+
+
+def _log_cycle(msg: str) -> None:
+    stamp = datetime.now().strftime("%H:%M:%S")
+    print(f"[{stamp}] {msg}", flush=True)
+
+
+def server_cycle() -> None:
+    """One scheduled tick: refresh prices, then publish to git.
+
+    refresh_all() already calls export_static_site() at the end of a successful
+    run, so we don't need to call it again here — we just push.
+    """
+    if not _cycle_lock.acquire(blocking=False):
+        _log_cycle("Cycle already running — skipping this tick.")
+        return
+    try:
+        _log_cycle("Cycle start: refresh_all()")
+        refresh_all()
+        # refresh_all sets cache["last_refresh"] only on success; missing means
+        # the run aborted (e.g. CAPTCHA bail-out). Skip publish in that case.
+        with cache_lock:
+            last = cache["last_refresh"]
+        if not last:
+            _log_cycle("Refresh did not complete (no snapshot) — publish skipped.")
+            return
+
+        payload, _ = publish_to_git()
+        if payload.get("ok"):
+            note = "nothing new" if payload.get("nothing_to_commit") else payload.get("message", "")
+            _log_cycle(f"Refresh complete. Exported. Pushed. ({note})")
+        else:
+            _log_cycle(
+                f"Refresh complete. Exported. Push FAILED at "
+                f"{payload.get('stage')}: {payload.get('error')}"
+            )
+    except Exception as e:
+        _log_cycle(f"Cycle error: {e}")
+    finally:
+        _cycle_lock.release()
+
+
+def start_server_scheduler():
+    """Top-of-the-hour cron tick. Returns the scheduler so the caller can shut
+    it down on exit."""
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+
+    sched = BackgroundScheduler(daemon=True)
+    sched.add_job(
+        server_cycle,
+        CronTrigger(minute=0),  # fires at HH:00:00 every hour
+        id="hourly-refresh-publish",
+        max_instances=1,
+        coalesce=True,
+    )
+    sched.start()
+    nxt = sched.get_job("hourly-refresh-publish").next_run_time
+    _log_cycle(f"Server mode scheduler started · next tick: {nxt.strftime('%Y-%m-%d %H:%M:%S')}")
+    return sched
+
+
+# ---------------------------------------------------------------------------
+# Startup mode prompt
+# ---------------------------------------------------------------------------
+
+def prompt_mode() -> str:
+    """Return 'owner' or 'server'. Non-TTY → server (login items, headless)."""
+    if not sys.stdin.isatty():
+        print("[startup] stdin is not a TTY — defaulting to server mode.")
+        return "server"
+
+    print()
+    print("HW//INDEX — startup")
+    print("Select mode:")
+    print("  [1] Owner mode  — manual refresh + publish via UI (default)")
+    print("  [2] Server mode — auto refresh + publish every hour on the hour")
+    try:
+        choice = input("> ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return "owner"
+    if choice in ("2", "s", "server"):
+        return "server"
+    return "owner"
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -2898,7 +3035,27 @@ if __name__ == "__main__":
     print(f"  pacing: {WORKERS} workers · {DELAY_MIN}-{DELAY_MAX}s delays · retry-on-challenge={RETRY_ON_CHALLENGE}")
     print("  → http://localhost:5000")
     print("  → debug:  http://localhost:5000/api/debug?q=RTX+4070&condition=used")
-    print("  Press Ctrl+C to stop. Click 'Refresh Prices' in the UI.")
     print("=" * 70)
+
+    MODE = prompt_mode()
+    print(f"  Running in {MODE.upper()} mode.")
+    if MODE == "owner":
+        print("  Press Ctrl+C to stop. Click 'Refresh Prices' in the UI.")
+    else:
+        print("  Scheduler will refresh + publish at the top of every hour.")
+        print("  UI is accessible (read-only — owner buttons hidden).")
+    print("=" * 70)
+
     warm_load_from_history()
-    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+
+    scheduler = None
+    if MODE == "server":
+        scheduler = start_server_scheduler()
+
+    try:
+        # Reloader is off so the scheduler isn't double-started.
+        app.run(host="0.0.0.0" if MODE == "server" else "127.0.0.1",
+                port=5000, debug=False, threaded=True, use_reloader=False)
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)

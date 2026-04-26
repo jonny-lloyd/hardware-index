@@ -651,11 +651,14 @@
 </div>
 
 <script>
-// ---- Static / live mode ----
-// In static mode (GitHub Pages export) we read JSON files committed alongside
-// index.html and hide owner-only controls. window.HW_STATIC is injected by
-// export_static_site() before <head> closes.
+// ---- Static / live / server mode ----
+// STATIC: GitHub Pages export — no /api/* endpoints, no owner controls.
+// SERVER: live Flask page in server mode — endpoints exist but the autonomous
+//   scheduler owns Refresh/Publish, so the buttons are hidden in the UI.
+// READ_ONLY: either of the above hides owner-only buttons.
 const STATIC = !!window.HW_STATIC;
+const SERVER = !!window.HW_SERVER;
+const READ_ONLY = STATIC || SERVER;
 const URL_DATA       = STATIC ? './data.json'        : '/api/data';
 const URL_AGGREGATES = STATIC ? './aggregates.json'  : '/api/aggregates';
 const URL_REFRESH    = '/api/refresh';
@@ -1001,14 +1004,23 @@ document.addEventListener('click', (e) => {
 $('#refresh-btn').addEventListener('click', triggerRefresh);
 $('#publish-btn').addEventListener('click', triggerPublish);
 
-if (STATIC) {
-  // Hide owner controls — the public site is read-only.
+if (READ_ONLY) {
+  // Hide owner controls. STATIC = public Pages mirror (no API at all).
+  // SERVER = live monitoring page where the scheduler is in charge.
   ['#refresh-btn', '#publish-btn'].forEach(sel => {
     const el = $(sel);
     if (el) el.style.display = 'none';
   });
   const pill = $('#readonly-pill');
-  if (pill) pill.style.display = '';
+  if (pill) {
+    pill.style.display = '';
+    // SERVER pill phrasing is different — it's a running process, not a frozen
+    // snapshot — so flag the difference up front.
+    if (SERVER && !STATIC) {
+      const span = pill.querySelector('span:last-child');
+      if (span) span.innerHTML = 'SERVER MODE · NEXT REFRESH TOP OF HOUR · UPDATED <b id="readonly-age">—</b>';
+    }
+  }
 }
 
 // ============================================================
