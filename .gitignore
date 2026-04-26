@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# NOTE: price_history.json is intentionally NOT excluded.
+# Under this project's architecture, every refresh-and-publish becomes
+# a git commit, so the repo log forms a full audit trail of market
+# data over time. See HANDOFF.md.
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
