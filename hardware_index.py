@@ -1081,6 +1081,19 @@ def publish_to_git() -> tuple[dict, int]:
     if commit.returncode != 0 and not nothing_to_commit:
         return ({"ok": False, "stage": "git commit", "error": (commit.stderr or commit.stdout).strip()}, 500)
 
+    # Sync any commits made from another machine (e.g. Windows owner pushing
+    # while the Mac runs as the scheduled server) before we push. Without this,
+    # a non-fast-forward push gets rejected with "fetch first" any time the two
+    # machines have both committed since the last sync.
+    pull = run("pull", "--rebase", "origin", "master")
+    if pull.returncode != 0:
+        return ({
+            "ok": False,
+            "stage": "git pull",
+            "error": (pull.stderr or pull.stdout).strip(),
+            "commit_made": not nothing_to_commit,
+        }, 500)
+
     push = run("push")
     if push.returncode != 0:
         return ({
