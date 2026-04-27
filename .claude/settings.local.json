@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import ast; ast.parse\\(open\\('hardware_index.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('hardware_index.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(grep -n -E \"^if __name__|app\\\\.run|warm_load_from_history\\\\\\(\\\\\\)|HW//INDEX starting\" /c/Users/Jonny/OneDrive/Desktop/hardware-index/hardware_index.py)",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)"
     ]
   }
 }

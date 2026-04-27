@@ -2980,24 +2980,59 @@ def server_cycle() -> None:
         _cycle_lock.release()
 
 
+# Scheduler timezone. Pinned explicitly because APScheduler otherwise reads the
+# system tz at scheduler-construction time, and on macOS that can resolve to a
+# stale value during early process startup (the bug that put the next tick in
+# March 2026). London matches where the owner runs the server.
+SERVER_TZ = "Europe/London"
+
+
 def start_server_scheduler():
     """Top-of-the-hour cron tick. Returns the scheduler so the caller can shut
     it down on exit."""
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
 
-    sched = BackgroundScheduler(daemon=True)
+    sched = BackgroundScheduler(daemon=True, timezone=SERVER_TZ)
     sched.add_job(
         server_cycle,
-        CronTrigger(minute=0),  # fires at HH:00:00 every hour
+        CronTrigger(minute=0, timezone=SERVER_TZ),  # fires at HH:00:00 local
         id="hourly-refresh-publish",
         max_instances=1,
         coalesce=True,
     )
     sched.start()
     nxt = sched.get_job("hourly-refresh-publish").next_run_time
-    _log_cycle(f"Server mode scheduler started · next tick: {nxt.strftime('%Y-%m-%d %H:%M:%S')}")
+    _log_cycle(
+        f"Server mode scheduler started · tz={SERVER_TZ} · "
+        f"next tick: {nxt.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+    )
     return sched
+
+
+# Holder so the deferred-start thread can hand the scheduler back to __main__
+# for clean shutdown on exit.
+_scheduler_handle: dict = {"sched": None}
+
+
+def _deferred_start_scheduler(delay: float = 3.0) -> None:
+    """Start the scheduler after Flask has bound its socket.
+
+    Constructing APScheduler too early in process startup can capture a stale
+    system clock / timezone (especially on a MacBook just woken from sleep),
+    which is what produced the March-2026 next_run_time bug. Sleeping a few
+    seconds inside a daemon thread lets app.run() bind the port and the OS
+    settle before APScheduler reads the clock.
+    """
+    def _runner():
+        time.sleep(delay)
+        try:
+            _scheduler_handle["sched"] = start_server_scheduler()
+        except Exception as e:
+            _log_cycle(f"Scheduler failed to start: {e}")
+
+    t = threading.Thread(target=_runner, daemon=True, name="hw-sched-init")
+    t.start()
 
 
 # ---------------------------------------------------------------------------
@@ -3048,14 +3083,18 @@ if __name__ == "__main__":
 
     warm_load_from_history()
 
-    scheduler = None
     if MODE == "server":
-        scheduler = start_server_scheduler()
+        # Defer scheduler construction by ~3s so it happens after Flask has
+        # bound its socket and the system clock has settled — APScheduler reads
+        # the clock at construction time, and starting it pre-app.run() on a
+        # freshly-woken laptop can capture a stale tz/time.
+        _deferred_start_scheduler(delay=3.0)
 
     try:
         # Reloader is off so the scheduler isn't double-started.
         app.run(host="0.0.0.0" if MODE == "server" else "127.0.0.1",
                 port=5000, debug=False, threaded=True, use_reloader=False)
     finally:
-        if scheduler is not None:
-            scheduler.shutdown(wait=False)
+        sched = _scheduler_handle.get("sched")
+        if sched is not None:
+            sched.shutdown(wait=False)
