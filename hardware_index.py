@@ -3000,6 +3000,11 @@ def start_server_scheduler():
         id="hourly-refresh-publish",
         max_instances=1,
         coalesce=True,
+        # APScheduler's default misfire window is tight; a couple of seconds of
+        # GIL contention or laptop wake-up latency around the top of the hour
+        # was enough to drop ticks. 5 min is generous enough to absorb that
+        # without ever running the wrong hour's job.
+        misfire_grace_time=300,
     )
     sched.start()
     nxt = sched.get_job("hourly-refresh-publish").next_run_time
