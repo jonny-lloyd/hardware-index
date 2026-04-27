@@ -2,6 +2,8 @@
 
 A live hardware price index for consumer GPUs and RAM. The owner runs a local Flask scraper to refresh data; the public sees a static, read-only dashboard published to GitHub Pages.
 
+https://jonny-lloyd.github.io/hardware-index/
+
 ## How it works
 
 There are two views:
