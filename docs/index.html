@@ -473,18 +473,51 @@
   .stat-pill.green { color: var(--green); border-color: #4a7a4a; }
   .stat-pill.red { color: var(--red); border-color: #844; }
   .panel.full { grid-column: 1 / -1; }
-  .discount-banner {
+  /* ---- KPI band ---- */
+  /* Replaces the old "avg savings" two-tile banner with a denser strip of
+     headline takeaways. Each KPI gets its own cell; the divider on the left
+     border separates them without each one needing its own card chrome. */
+  .kpi-band {
     background: var(--bg-2); border: 1px solid var(--line);
-    padding: 14px 18px; margin-bottom: 16px;
-    display: flex; gap: 32px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0;
   }
-  .discount-banner .item { display: flex; flex-direction: column; gap: 4px; }
-  .discount-banner .item .lbl {
-    font-size: 10px; color: var(--fg-dim); text-transform: uppercase;
-    letter-spacing: 0.12em;
+  .kpi-band .kpi {
+    padding: 14px 18px;
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 0;
   }
-  .discount-banner .item .val {
-    font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--green);
+  .kpi-band .kpi:first-child { border-left: 0; }
+  .kpi-band .kpi .lbl {
+    font-size: 9px; color: var(--fg-dim); text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .kpi-band .kpi .val {
+    font-family: var(--display); font-size: 22px; font-weight: 700;
+    color: var(--fg); line-height: 1.1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kpi-band .kpi .val.green { color: var(--green); }
+  .kpi-band .kpi .val.red   { color: var(--red); }
+  .kpi-band .kpi .val.amber { color: var(--amber); }
+  .kpi-band .kpi .val.blue  { color: var(--blue); }
+  .kpi-band .kpi .sub {
+    font-size: 10px; color: var(--fg-faint);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kpi-band .kpi .sub b { color: var(--fg-dim); font-weight: 500; }
+  .kpi-band .kpi .duo {
+    display: flex; gap: 12px; align-items: baseline;
+    font-family: var(--display); font-weight: 700;
+  }
+  .kpi-band .kpi .duo .a { font-size: 18px; color: var(--amber); }
+  .kpi-band .kpi .duo .b { font-size: 18px; color: var(--blue); }
+  .kpi-band .kpi .duo .vs {
+    font-family: var(--mono); font-size: 10px; color: var(--fg-faint);
+    text-transform: uppercase; letter-spacing: 0.12em;
   }
   .index-empty {
     padding: 100px 20px; text-align: center; color: var(--fg-dim);
@@ -534,9 +567,9 @@
   <div id="publish-result-mount"></div>
 
   <div class="tabs">
-    <button class="tab active" data-tab="gpu">GPU<span class="count" id="gpu-count"></span></button>
+    <button class="tab active" data-tab="index">Index<span class="count" id="index-count"></span></button>
+    <button class="tab" data-tab="gpu">GPU<span class="count" id="gpu-count"></span></button>
     <button class="tab" data-tab="ram">RAM<span class="count" id="ram-count"></span></button>
-    <button class="tab" data-tab="index">Index<span class="count" id="index-count"></span></button>
   </div>
 
   <div class="progress" id="progress">
@@ -546,7 +579,7 @@
     <div class="bar-wrap"><div class="bar" id="progress-bar"></div></div>
   </div>
 
-  <div class="filters" id="filters-gpu">
+  <div class="filters" id="filters-gpu" style="display:none">
     <div class="filter-group">
       <span class="filter-label">Search</span>
       <input type="text" class="filter-input" id="gpu-search" placeholder="e.g. 4070, AMD, RX...">
@@ -584,7 +617,7 @@
     </div>
   </div>
 
-  <div class="legend" id="legend-gpu">
+  <div class="legend" id="legend-gpu" style="display:none">
     <span><b>BENCHMARK:</b> 3DMark Time Spy Graphics (approx)</span>
     <span><b>PERF/$:</b> benchmark score per USD · higher = better value</span>
     <span><b>PRICE:</b> median of matched eBay listings (active new · sold used)</span>
@@ -597,7 +630,7 @@
     <span><b>TREND:</b> % change vs previous refresh</span>
   </div>
 
-  <div id="tab-gpu" class="tab-content">
+  <div id="tab-gpu" class="tab-content" style="display:none">
     <div class="table-wrap">
       <table id="gpu-table">
         <thead><tr>
@@ -637,7 +670,7 @@
     </div>
   </div>
 
-  <div id="tab-index" class="tab-content" style="display:none">
+  <div id="tab-index" class="tab-content">
     <div id="index-content">
       <div class="index-empty">
         <div class="big">Loading index data...</div>
@@ -666,7 +699,7 @@ const URL_PUBLISH    = '/api/publish';
 
 // ---- State ----
 let state = {
-  activeTab: 'gpu',
+  activeTab: 'index',
   data: { gpu: [], ram: [] },
   aggregates: null,
   sort: { gpu: { key: 'benchmark', dir: -1 }, ram: { key: 'speed', dir: -1 } },
@@ -1082,7 +1115,7 @@ function renderIndex(data) {
       ${renderHeroCard('ram_used', latest, prev, validSeries)}
     </div>
 
-    ${renderDiscountBanner(current.discounts)}
+    ${renderKpiBand(latest, prev, current.discounts, validSeries, state.data.gpu, state.data.ram)}
 
     <div class="chart-card">
       <div class="chart-header">
@@ -1512,20 +1545,118 @@ function sparkline(points, color) {
   </svg>`;
 }
 
-function renderDiscountBanner(disc) {
-  if (!disc) return '';
-  const items = [];
-  if (disc.gpu_used_vs_new != null) {
-    items.push(`<div class="item"><span class="lbl">GPU · Used vs New discount</span><span class="val">${(disc.gpu_used_vs_new * 100).toFixed(1)}%</span></div>`);
+// Replaces the old two-tile "avg savings" banner. Builds a strip of headline
+// takeaways from whatever context is available — discounts, latest index
+// values, ddr generation prices, the biggest mover this session, etc. — and
+// drops cells that don't have data. Order is rough priority: market summary
+// first, then DDR comparison, then deal/secondhand context, then breadth.
+function renderKpiBand(latest, prev, discounts, series, gpus, rams) {
+  const cells = [];
+
+  // 1. GPU market index — single headline number for "where is the GPU market?"
+  if (latest && latest.gpu_new_idx != null) {
+    const pct = (latest.gpu_new_idx - 1) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    const cls = pct > 2 ? 'red' : (pct < -2 ? 'green' : 'amber');
+    let delta = '';
+    if (prev && prev.gpu_new_idx != null) {
+      const d = (latest.gpu_new_idx - prev.gpu_new_idx) * 100;
+      const arrow = d > 0.05 ? '▲' : (d < -0.05 ? '▼' : '◆');
+      delta = ` <b>${arrow} ${Math.abs(d).toFixed(2)}pp</b> vs prior`;
+    }
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">GPU market · vs MSRP</div>
+        <div class="val ${cls}">${sign}${pct.toFixed(1)}%</div>
+        <div class="sub">${latest.gpu_new_idx.toFixed(3)}x${delta}</div>
+      </div>`);
   }
-  if (disc.ram_used_vs_new != null) {
-    items.push(`<div class="item"><span class="lbl">RAM · Used vs New discount</span><span class="val">${(disc.ram_used_vs_new * 100).toFixed(1)}%</span></div>`);
+
+  // 2. DDR4 vs DDR5 cost per GB — explicit comparison the user asked for.
+  const ddr4New = (rams || []).map(r => r.gen === 'DDR4' ? r?.cost_per_gb_new : null).filter(v => v != null);
+  const ddr5New = (rams || []).map(r => r.gen === 'DDR5' ? r?.cost_per_gb_new : null).filter(v => v != null);
+  if (ddr4New.length || ddr5New.length) {
+    const avg = arr => arr.length ? arr.reduce((a,c)=>a+c,0)/arr.length : null;
+    const a = avg(ddr4New), b = avg(ddr5New);
+    let premium = '';
+    if (a && b) {
+      const pct = ((b - a) / a) * 100;
+      premium = `DDR5 ${pct >= 0 ? '+' : ''}${pct.toFixed(0)}% premium`;
+    }
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">RAM · £ / GB (new)</div>
+        <div class="duo">
+          <span class="a">${a != null ? '£' + a.toFixed(2) : '—'}</span>
+          <span class="vs">DDR4 · DDR5</span>
+          <span class="b">${b != null ? '£' + b.toFixed(2) : '—'}</span>
+        </div>
+        <div class="sub">${premium}</div>
+      </div>`);
   }
-  if (!items.length) return '';
-  return `<div class="discount-banner">
-    <div class="item"><span class="lbl">Avg savings buying secondhand</span></div>
-    ${items.join('')}
-  </div>`;
+
+  // 3. Used-vs-new discount, combined into one cell.
+  if (discounts && (discounts.gpu_used_vs_new != null || discounts.ram_used_vs_new != null)) {
+    const fmt = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">Used vs new · discount</div>
+        <div class="val green">${fmt(discounts.gpu_used_vs_new)}</div>
+        <div class="sub">GPU · RAM <b>${fmt(discounts.ram_used_vs_new)}</b></div>
+      </div>`);
+  }
+
+  // 4. Best perf/£ GPU available right now — most actionable "where's the deal".
+  const allGpus = (gpus || []).map(g => {
+    const n = g?.new?.median, u = g?.used?.median, b = g.benchmark;
+    if (!b) return null;
+    const candidates = [];
+    if (n != null) candidates.push({ name: g.name, v: b/n, price: n, side: 'new' });
+    if (u != null) candidates.push({ name: g.name, v: b/u, price: u, side: 'used' });
+    return candidates;
+  }).filter(Boolean).flat();
+  if (allGpus.length) {
+    const best = allGpus.reduce((a, c) => c.v > a.v ? c : a);
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">Best perf / £ right now</div>
+        <div class="val amber">${best.v.toFixed(1)} pts/£</div>
+        <div class="sub">${best.name} · £${Math.round(best.price)} (${best.side})</div>
+      </div>`);
+  }
+
+  // 5. Biggest mover since prior snapshot — only meaningful with trend data.
+  const movers = (gpus || [])
+    .map(g => ({ name: g.name, t: g.trend_new }))
+    .filter(x => x.t != null && Math.abs(x.t) > 0.05);
+  if (movers.length) {
+    const mover = movers.reduce((a, c) => Math.abs(c.t) > Math.abs(a.t) ? c : a);
+    const cls = mover.t > 0 ? 'red' : 'green';
+    const sign = mover.t > 0 ? '+' : '';
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">Biggest mover · vs prior</div>
+        <div class="val ${cls}">${sign}${mover.t.toFixed(1)}%</div>
+        <div class="sub">${mover.name}</div>
+      </div>`);
+  }
+
+  // 6. Coverage — how much data are we looking at.
+  if (series && series.length) {
+    const firstTs = new Date(series[0].ts);
+    const lastTs = new Date(series[series.length - 1].ts);
+    const days = Math.max(1, Math.round((lastTs - firstTs) / 86400000));
+    const items = (gpus?.length || 0) + (rams?.length || 0);
+    cells.push(`
+      <div class="kpi">
+        <div class="lbl">Coverage</div>
+        <div class="val">${series.length}</div>
+        <div class="sub">snapshots · ${items} items · ${days}d</div>
+      </div>`);
+  }
+
+  if (!cells.length) return '';
+  return `<div class="kpi-band">${cells.join('')}</div>`;
 }
 
 function renderTierPanel(label, newTiers, usedTiers) {
@@ -1786,8 +1917,12 @@ function formatFullDate(iso) {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// Initial load
-loadData();
+// Initial load. loadData() populates state.data.{gpu,ram} (which the index-tab
+// renderers also depend on), then we kick off the aggregates fetch so the Index
+// tab — which is now the default landing tab — has something to draw.
+loadData().then(() => {
+  if (state.activeTab === 'index') loadAggregates();
+});
 // In live mode, poll periodically so the "X ago" label and refresh progress
 // stay current. In static mode the page is a frozen snapshot — no polling.
 if (!STATIC) {
