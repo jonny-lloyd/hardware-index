@@ -62,7 +62,12 @@ USER_AGENTS = [
 REPO_ROOT = Path(__file__).resolve().parent
 SNAPSHOT_FILE = str(REPO_ROOT / "price_history.json")
 DOCS_DIR = REPO_ROOT / "docs"
-MAX_SNAPSHOTS = 200
+# One year of hourly snapshots. The chart's x-scale auto-fits the full series
+# across the SVG width, so denser data just smooths the trend line — no other
+# code needs to change for the chart to absorb the larger window. See the
+# `series.length < 300` guard in drawChart() that hides per-point circles once
+# the series is dense enough that they'd just be noise.
+MAX_SNAPSHOTS = 8760
 OWNER_LABEL = os.environ.get("HW_OWNER", "owner")
 
 # Set by prompt_mode() before app.run(). "owner" = manual UI control.
@@ -2844,7 +2849,11 @@ function drawChart(series) {
   });
   svg.appendChild(axisG);
 
-  // Plot each series
+  // Plot each series. Per-point circles are useful when the data is sparse
+  // (you can see each refresh) but become tens of thousands of DOM nodes once
+  // the series is dense — they just blur the trend line and slow hover. Hide
+  // them past a threshold; the line + hover crosshair carry the visual.
+  const SHOW_DOTS = series.length < 300;
   ['gpu_new_idx', 'gpu_used_idx', 'ram_new_idx', 'ram_used_idx'].forEach(key => {
     const baseKey = key.replace('_idx', '');
     const color = INDEX_COLORS[baseKey];
@@ -2852,12 +2861,20 @@ function drawChart(series) {
     if (!pts.length) return;
     const d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + xScale(p.i).toFixed(2) + ' ' + yScale(p.v).toFixed(2)).join(' ');
     svg.appendChild(svgEl('path', { class: 'series', d: d, stroke: color }));
-    pts.forEach(p => {
+    if (SHOW_DOTS) {
+      pts.forEach(p => {
+        svg.appendChild(svgEl('circle', {
+          class: 'series-dot', cx: xScale(p.i), cy: yScale(p.v), r: 3, fill: color,
+          'data-key': key, 'data-i': p.i,
+        }));
+      });
+    } else {
+      // Always mark the latest point so the current value reads at a glance.
+      const last = pts[pts.length - 1];
       svg.appendChild(svgEl('circle', {
-        class: 'series-dot', cx: xScale(p.i), cy: yScale(p.v), r: 3, fill: color,
-        'data-key': key, 'data-i': p.i,
+        class: 'series-dot', cx: xScale(last.i), cy: yScale(last.v), r: 3, fill: color,
       }));
-    });
+    }
   });
 
   // Hover behaviour
