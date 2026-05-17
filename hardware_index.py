@@ -721,63 +721,118 @@ def warm_load_from_history() -> None:
 # These power the INDEX tab in the UI. The "index" is the average ratio of
 # market price to MSRP across a category. A value of 1.07 means the market
 # is trading 7% over MSRP on average; 0.62 means used is at 62% of MSRP.
+#
+# Two data-quality filters apply at the aggregation layer (raw history in
+# price_history.json is never modified):
+#
+#   INDEX_MIN_COUNT — a kit's median for a given snapshot is only allowed to
+#     contribute to the index if it was backed by at least this many listings.
+#     Drops the situation where a single eBay listing whipsaws the index.
+#
+#   INDEX_SMOOTH_K  — when reading a kit's value at snapshot t, use the median
+#     of its last K valid medians ending at t (rolling K-window median). A
+#     one-off outlier at t can't move the index because the median of the
+#     window is dominated by the other K-1 stable values. A real price move
+#     shows up after ~K/2 snapshots — i.e. a few hours of lag during genuine
+#     market shifts, which is acceptable for an hourly index.
 
-def _ratio_index(items: list[dict], meta: dict, side: str) -> tuple[Optional[float], Optional[float], int]:
-    """Return (avg_ratio, avg_price, n) for items with valid medians and MSRPs."""
-    ratios = []
-    prices = []
+INDEX_MIN_COUNT = 3
+INDEX_SMOOTH_K = 3
+
+
+def _normalize_snapshot_items(items: list[dict]) -> list[dict]:
+    """Coerce legacy median-only snapshot entries into the full dict shape."""
+    out = []
     for x in items:
-        m = meta.get(x["name"])
-        if not m:
+        if isinstance(x.get("new"), dict):
+            out.append(x)
+        else:
+            out.append({
+                "name": x.get("name"),
+                "new": {"median": x.get("new_median")},
+                "used": {"median": x.get("used_median")},
+            })
+    return out
+
+
+def _kit_value_at(history: list[dict], kind: str, kit_name: str, side: str,
+                  end_idx: int, k: int = INDEX_SMOOTH_K,
+                  min_count: int = INDEX_MIN_COUNT) -> Optional[float]:
+    """Smoothed median for one kit at snapshot index `end_idx`.
+
+    Looks back at snapshots `[end_idx-k+1 ... end_idx]`. From each snapshot,
+    take the kit's median if its listing count is >= min_count. Returns the
+    median of the collected values — or None if fewer than ceil(k/2) qualified.
+
+    Legacy snapshots that don't record per-side counts fall back to assuming
+    count is sufficient (we can't know better and we don't want to throw out
+    all our pre-filter history).
+    """
+    collected: list[float] = []
+    start = max(0, end_idx - k + 1)
+    for j in range(start, end_idx + 1):
+        items = _normalize_snapshot_items(history[j].get(kind, []))
+        match = next((x for x in items if x.get("name") == kit_name), None)
+        if not match:
             continue
-        side_data = x.get(side) if isinstance(x.get(side), dict) else {}
+        side_data = match.get(side) if isinstance(match.get(side), dict) else {}
         med = side_data.get("median")
-        if med and m.get("msrp"):
-            ratios.append(med / m["msrp"])
-            prices.append(med)
+        if not med:
+            continue
+        cnt = side_data.get("count")
+        # Legacy snapshots: count is missing — accept the value so old history
+        # doesn't go dark. New snapshots: enforce the floor.
+        if cnt is not None and cnt < min_count:
+            continue
+        collected.append(med)
+
+    needed = (k + 1) // 2  # ceil(k/2)
+    if len(collected) < needed:
+        return None
+    collected.sort()
+    mid = len(collected) // 2
+    if len(collected) % 2 == 1:
+        return collected[mid]
+    return (collected[mid - 1] + collected[mid]) / 2
+
+
+def _index_from_smoothed(history: list[dict], kind: str, meta: dict, side: str,
+                         end_idx: int) -> tuple[Optional[float], Optional[float], int]:
+    """Return (avg_ratio, avg_price, n) computed from per-kit smoothed values
+    at snapshot `end_idx`. Kits without a valid smoothed value are excluded."""
+    ratios: list[float] = []
+    prices: list[float] = []
+    for kit_name, m in meta.items():
+        msrp = m.get("msrp")
+        if not msrp:
+            continue
+        v = _kit_value_at(history, kind, kit_name, side, end_idx)
+        if v is None:
+            continue
+        ratios.append(v / msrp)
+        prices.append(v)
     if not ratios:
         return None, None, 0
     return (sum(ratios) / len(ratios)), (sum(prices) / len(prices)), len(ratios)
 
 
 def compute_time_series() -> list[dict]:
-    """Walk snapshot history; for each snapshot, compute the 4 indices.
+    """Walk snapshot history; for each snapshot, compute the 4 smoothed indices.
 
-    Skips legacy snapshots (older format that only stored medians without
-    full stats) since they don't carry enough data — though for this purpose
-    medians alone would suffice. We accept either format here.
+    Each snapshot point is a rolling K-window median across the prior K-1 plus
+    itself, so a single bad scrape never moves the line by itself.
     """
     history = load_history()
     gpu_meta = {g["name"]: g for g in GPUS}
     ram_meta = {r["name"]: r for r in RAM_KITS}
 
     series: list[dict] = []
-    for snap in history:
+    for i, snap in enumerate(history):
         ts = snap.get("ts")
-        gpu_items = snap.get("gpu", [])
-        ram_items = snap.get("ram", [])
-
-        # Normalize legacy format (median-only) to look like the full format
-        def _norm(items):
-            out = []
-            for x in items:
-                if isinstance(x.get("new"), dict):
-                    out.append(x)
-                else:
-                    out.append({
-                        "name": x.get("name"),
-                        "new": {"median": x.get("new_median")},
-                        "used": {"median": x.get("used_median")},
-                    })
-            return out
-
-        gpu_items = _norm(gpu_items)
-        ram_items = _norm(ram_items)
-
-        gpu_new_idx, gpu_new_avg, gpu_new_n = _ratio_index(gpu_items, gpu_meta, "new")
-        gpu_used_idx, gpu_used_avg, gpu_used_n = _ratio_index(gpu_items, gpu_meta, "used")
-        ram_new_idx, ram_new_avg, ram_new_n = _ratio_index(ram_items, ram_meta, "new")
-        ram_used_idx, ram_used_avg, ram_used_n = _ratio_index(ram_items, ram_meta, "used")
+        gpu_new_idx, gpu_new_avg, gpu_new_n = _index_from_smoothed(history, "gpu", gpu_meta, "new", i)
+        gpu_used_idx, gpu_used_avg, gpu_used_n = _index_from_smoothed(history, "gpu", gpu_meta, "used", i)
+        ram_new_idx, ram_new_avg, ram_new_n = _index_from_smoothed(history, "ram", ram_meta, "new", i)
+        ram_used_idx, ram_used_avg, ram_used_n = _index_from_smoothed(history, "ram", ram_meta, "used", i)
 
         series.append({
             "ts": ts,
@@ -798,19 +853,39 @@ def compute_time_series() -> list[dict]:
 
 
 def compute_current_stats() -> dict:
-    """Tier-level breakdowns + best-deal leaderboards from the live cache."""
+    """Tier-level breakdowns + best-deal leaderboards.
+
+    Tiers + discounts use the smoothed kit values at the latest snapshot, so a
+    single bad scrape doesn't whipsaw the KPI band. Leaderboards stay raw —
+    they're meant to surface deals that are *actually live right now*, so we
+    don't want to smooth those out.
+    """
     with cache_lock:
         gpu_data = list(cache["gpu"])
         ram_data = list(cache["ram"])
 
-    def tier_stats(items: list[dict], side: str) -> dict:
+    history = load_history()
+    end_idx = len(history) - 1
+    have_history = end_idx >= 0
+
+    def _smoothed_price(items: list[dict], kind: str, kit_name: str, side: str,
+                        raw_fallback: Optional[float]) -> Optional[float]:
+        """Smoothed median for a kit at the latest snapshot, falling back to
+        the raw cache value when history is empty (e.g. first ever boot)."""
+        if not have_history:
+            return raw_fallback
+        return _kit_value_at(history, kind, kit_name, side, end_idx)
+
+    def tier_stats(items: list[dict], kind: str, side: str) -> dict:
         by_tier: dict[str, list[dict]] = {}
         for x in items:
             tier = x.get("tier")
-            side_data = x.get(side) if isinstance(x.get(side), dict) else {}
-            med = side_data.get("median")
             msrp = x.get("msrp")
-            if not tier or not med or not msrp:
+            if not tier or not msrp:
+                continue
+            raw = (x.get(side) or {}).get("median") if isinstance(x.get(side), dict) else None
+            med = _smoothed_price(items, kind, x["name"], side, raw)
+            if not med:
                 continue
             by_tier.setdefault(tier, []).append({"median": med, "msrp": msrp, "ratio": med / msrp})
         out = {}
@@ -824,11 +899,13 @@ def compute_current_stats() -> dict:
             }
         return out
 
-    def used_vs_new_discount(items: list[dict]) -> Optional[float]:
+    def used_vs_new_discount(items: list[dict], kind: str) -> Optional[float]:
         deltas = []
         for x in items:
-            n = x.get("new", {}).get("median") if isinstance(x.get("new"), dict) else None
-            u = x.get("used", {}).get("median") if isinstance(x.get("used"), dict) else None
+            raw_n = (x.get("new") or {}).get("median") if isinstance(x.get("new"), dict) else None
+            raw_u = (x.get("used") or {}).get("median") if isinstance(x.get("used"), dict) else None
+            n = _smoothed_price(items, kind, x["name"], "new", raw_n)
+            u = _smoothed_price(items, kind, x["name"], "used", raw_u)
             if n and u and n > 0:
                 deltas.append((n - u) / n)
         return round(sum(deltas) / len(deltas), 3) if deltas else None
@@ -854,14 +931,14 @@ def compute_current_stats() -> dict:
 
     return {
         "tiers": {
-            "gpu_new": tier_stats(gpu_data, "new"),
-            "gpu_used": tier_stats(gpu_data, "used"),
-            "ram_new": tier_stats(ram_data, "new"),
-            "ram_used": tier_stats(ram_data, "used"),
+            "gpu_new": tier_stats(gpu_data, "gpu", "new"),
+            "gpu_used": tier_stats(gpu_data, "gpu", "used"),
+            "ram_new": tier_stats(ram_data, "ram", "new"),
+            "ram_used": tier_stats(ram_data, "ram", "used"),
         },
         "discounts": {
-            "gpu_used_vs_new": used_vs_new_discount(gpu_data),
-            "ram_used_vs_new": used_vs_new_discount(ram_data),
+            "gpu_used_vs_new": used_vs_new_discount(gpu_data, "gpu"),
+            "ram_used_vs_new": used_vs_new_discount(ram_data, "ram"),
         },
         "leaders": {
             "gpu_new": [
